@@ -306,6 +306,112 @@ body > * {
     backdrop-filter: blur(10px);
 }
 
+/* 生成选项区域 */
+.generation-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* 质量选择器 */
+.quality-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem 1.5rem;
+    background: rgba(90, 57, 33, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(184, 134, 11, 0.2);
+    backdrop-filter: blur(5px);
+}
+
+.quality-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 0.8rem;
+    font-size: 0.9rem;
+    color: #5a3921;
+    font-weight: 500;
+}
+
+.quality-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #b8860b;
+    cursor: pointer;
+}
+
+.quality-text {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.quality-label:hover .quality-text {
+    opacity: 1;
+}
+
+.quality-label:has(input:checked) .quality-text {
+    color: #b8860b;
+    font-weight: 600;
+    opacity: 1;
+}
+
+/* 生成选项区域 */
+.generation-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* 质量选择器 */
+.quality-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem 1.5rem;
+    background: rgba(90, 57, 33, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(184, 134, 11, 0.2);
+    backdrop-filter: blur(5px);
+}
+
+.quality-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 0.8rem;
+    font-size: 0.9rem;
+    color: #5a3921;
+    font-weight: 500;
+}
+
+.quality-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #b8860b;
+    cursor: pointer;
+}
+
+.quality-text {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.quality-label:hover .quality-text {
+    opacity: 1;
+}
+
+.quality-label:has(input:checked) .quality-text {
+    color: #b8860b;
+    font-weight: 600;
+    opacity: 1;
+}
+
 .creation-header {
     display: flex;
     justify-content: space-between;

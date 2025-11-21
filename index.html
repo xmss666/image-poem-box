@@ -50,7 +50,15 @@
             <div class="creation-area" id="creationArea">
                 <div class="creation-placeholder">请从上方选择2-7个意象开始创作</div>
             </div>
-            <button id="generatePoem" class="generate-btn" disabled>生成意境</button>
+            <div class="generation-options">
+                <div class="quality-selector">
+                    <label class="quality-label">
+                        <input type="checkbox" id="highQualityMode">
+                        <span class="quality-text">高质量模式 (使用GLM-4.5-Flash模型，生成质量更高但速度较慢)</span>
+                    </label>
+                </div>
+                <button id="generatePoem" class="generate-btn" disabled>生成意境</button>
+            </div>
         </section>
 
         <!-- 诗意展示区 -->
@@ -75,6 +83,6 @@
         <p>© 意象·诗匣 - 让古典诗词在数字时代焕发新生</p>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>

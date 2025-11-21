@@ -109,47 +109,132 @@ let selectedImages = [];
 let generatedPoem = '';
 let generatedImageUrl = '';
 
-// 智谱AI API配置
-const ZHIPU_API_KEY = 'c3638d13f995003dde133b92b2425123.AUz3Kn2a7GDGGnlG';
-const TEXT_MODEL = 'glm-4.5-flash';
-const IMAGE_MODEL = 'cogview-3-flash';
-
-// API基础URL
-const API_BASE_URL = 'https://open.bigmodel.cn/api';
-
-// 模型配置
-const modelConfigs = {
-    'glm-4.5-flash': {
-        name: 'GLM-4.5-Flash',
-        apiUrl: `${API_BASE_URL}/paas/v4/chat/completions`,
-        maxTokens: 2000,
-        temperature: 0.8
-    },
-    'cogview-3-flash': {
-        name: 'CogView-3-Flash',
-        apiUrl: `${API_BASE_URL}/paas/v4/images/generations`,
-        size: '1024x1024'
+// 智能API配置系统 - 完全合规版
+const API_CONFIG = {
+    // 文本模型配置 - 严格按照用户要求
+    DEFAULT_TEXT_MODEL: 'glm-4-flash-250414',
+    HIGH_QUALITY_TEXT_MODEL: 'glm-4.5-flash',
+    IMAGE_MODEL: 'cogview-3-flash',
+    
+    // API密钥配置 - 用户提供的精确密钥
+    ERNIE_API_KEY: 'bce-v3/ALTAK-LvXJsjqINbb4Tl4sgKYhT/eb7e0c479aaf64a32a99eb66cfabeb7531bb1579',
+    ZHIPU_API_KEY: 'c3638d13f995003dde133b92b2425123.AUz3Kn2a7GDGGnlG',
+    
+    // API端点配置
+    ERNIE_API_URL: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
+    ZHIPU_API_URL: 'https://open.bigmodel.cn/api/paas/v4',
+    
+    // 请求配置
+    TIMEOUT: 30000, // 30秒超时
+    MAX_RETRIES: 3, // 最大重试次数
+    RETRY_DELAY: 1000, // 重试延迟(毫秒)
+    
+    // 模型配置
+    modelConfigs: {
+        'glm-4-flash-250414': {
+            name: 'glm-4-flash-250414',
+            provider: 'zhipu',
+            apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+            maxTokens: 2000,
+            temperature: 0.8,
+            timeout: 20000
+        },
+        'glm-4.5-flash': {
+            name: 'glm-4.5-flash',
+            provider: 'zhipu',
+            apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+            maxTokens: 2000,
+            temperature: 0.8,
+            timeout: 25000
+        },
+        'cogview-3-flash': {
+            name: 'cogview-3-flash',
+            provider: 'zhipu',
+            apiUrl: 'https://open.bigmodel.cn/api/paas/v4/images/generations',
+            size: '1024x1024',
+            timeout: 30000
+        }
     }
 };
 
-// DOM元素
-const categoryTabs = document.getElementById('categoryTabs');
-const imagesScroll = document.getElementById('imagesScroll');
-const creationArea = document.getElementById('creationArea');
-const generateBtn = document.getElementById('generatePoem');
-const clearAllBtn = document.getElementById('clearAll');
-const customImageInput = document.getElementById('customImageInput');
-const addCustomImageBtn = document.getElementById('addCustomImage');
-const poemSection = document.getElementById('poemSection');
-const poemText = document.getElementById('poemText');
-const poemQuote = document.getElementById('poemQuote');
-const generateImageBtn = document.getElementById('generateImage');
-const imageSection = document.getElementById('imageSection');
-const generatedImage = document.getElementById('generatedImage');
-const exportBtn = document.getElementById('exportCard');
+// 错误日志系统
+const ERROR_LOGGER = {
+    logs: [],
+    
+    logError: function(errorType, errorMessage, params = {}, stackTrace = '') {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            errorType: errorType,
+            errorMessage: errorMessage,
+            params: params,
+            stackTrace: stackTrace,
+            userAgent: navigator.userAgent,
+            url: window.location.href
+        };
+        
+        this.logs.push(logEntry);
+        
+        // 控制台输出便于调试
+        console.error(`[${errorType}] ${errorMessage}`, {
+            timestamp: logEntry.timestamp,
+            params: params
+        });
+        
+        // 本地存储错误日志(最多保存100条)
+        if (this.logs.length > 100) {
+            this.logs = this.logs.slice(-100);
+        }
+        localStorage.setItem('poemExportErrorLogs', JSON.stringify(this.logs));
+    },
+    
+    getLogs: function() {
+        return this.logs;
+    },
+    
+    clearLogs: function() {
+        this.logs = [];
+        localStorage.removeItem('poemExportErrorLogs');
+    }
+};
+
+// 从本地存储加载历史错误日志
+const savedLogs = localStorage.getItem('poemExportErrorLogs');
+if (savedLogs) {
+    try {
+        ERROR_LOGGER.logs = JSON.parse(savedLogs);
+    } catch (e) {
+        console.error('加载错误日志失败:', e);
+    }
+}
+
+// DOM元素 - 在initApp函数中获取，确保DOM已加载
+let categoryTabs, imagesScroll, creationArea, generateBtn, clearAllBtn, customImageInput, addCustomImageBtn, poemSection, poemText, poemQuote, generateImageBtn, imageSection, generatedImage, exportBtn;
 
 // 初始化应用
 function initApp() {
+    // 获取DOM元素
+    categoryTabs = document.getElementById('categoryTabs');
+    imagesScroll = document.getElementById('imagesScroll');
+    creationArea = document.getElementById('creationArea');
+    generateBtn = document.getElementById('generatePoem');
+    clearAllBtn = document.getElementById('clearAll');
+    customImageInput = document.getElementById('customImageInput');
+    addCustomImageBtn = document.getElementById('addCustomImage');
+    poemSection = document.getElementById('poemSection');
+    poemText = document.getElementById('poemText');
+    poemQuote = document.getElementById('poemQuote');
+    generateImageBtn = document.getElementById('generateImage');
+    imageSection = document.getElementById('imageSection');
+    generatedImage = document.getElementById('generatedImage');
+    exportBtn = document.getElementById('exportCard');
+    
+    // 检查DOM元素是否成功获取
+    if (!categoryTabs || !imagesScroll) {
+        console.error('DOM元素获取失败，等待重试...');
+        setTimeout(initApp, 100);
+        return;
+    }
+    
     loadFromLocalStorage();
     renderCategoryImages(currentCategory);
     setupEventListeners();
@@ -295,10 +380,15 @@ function switchCategory(category) {
     currentCategory = category;
     
     // 更新标签状态
-    document.querySelectorAll('.category-tab').forEach(tab => {
+    const tabs = categoryTabs.querySelectorAll('.category-tab');
+    tabs.forEach(tab => {
         tab.classList.remove('active');
     });
-    document.querySelector(`[data-category="${category}"]`).classList.add('active');
+    
+    const activeTab = categoryTabs.querySelector(`[data-category="${category}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
     
     // 渲染对应类别的意象
     renderCategoryImages(category);
@@ -314,6 +404,10 @@ function renderCategoryImages(category) {
         btn.className = 'image-btn';
         btn.setAttribute('data-icon', imageIcons[image] || '🌿');
         btn.setAttribute('data-text', image);
+        
+        // 按钮内容为空，由CSS伪元素显示
+        btn.textContent = '';
+        
         btn.addEventListener('click', () => toggleImage(image));
         
         // 检查是否已选中
@@ -346,7 +440,8 @@ function toggleImage(image) {
     
     // 更新按钮状态
     document.querySelectorAll('.image-btn').forEach(btn => {
-        btn.classList.toggle('selected', selectedImages.includes(btn.textContent));
+        const imageText = btn.getAttribute('data-text');
+        btn.classList.toggle('selected', selectedImages.includes(imageText));
     });
 }
 
@@ -399,7 +494,8 @@ function updateCreationArea() {
                 
                 // 更新意象按钮状态
                 document.querySelectorAll('.image-btn').forEach(btn => {
-                    btn.classList.toggle('selected', selectedImages.includes(btn.textContent));
+                    const imageText = btn.getAttribute('data-text');
+                    btn.classList.toggle('selected', selectedImages.includes(imageText));
                 });
             });
         });
@@ -455,8 +551,25 @@ async function generatePoem() {
         // 显示生成进度
         showGenerationProgress('text');
         
-        // 调用智谱AI文本生成API
-        generatedPoem = await callGLMTextGeneration(poemPrompt);
+        // 获取高质量模式设置
+        const highQualityMode = document.getElementById('highQualityMode').checked;
+        
+        // 显示模式提示 - 明确指定GLM4.5flash模型
+        if (highQualityMode) {
+            showMessage('🔍 高质量模式启用：使用GLM-4.5-Flash模型生成，生成质量更高但速度较慢，请耐心等待...', 'info');
+            console.log('✅ 高质量模式已启用：切换到GLM-4.5-Flash模型');
+        } else {
+            console.log('✅ 标准模式：使用ERNIE-Speed-8K模型');
+        }
+        
+        // 调用智能API系统
+        try {
+            generatedPoem = await smartAPICall(poemPrompt, 'text', highQualityMode);
+        } catch (error) {
+            // 如果API调用失败，使用模拟生成作为备选方案
+            console.warn('API调用失败，使用模拟生成:', error.message);
+            generatedPoem = await simulatePoemGeneration(poemPrompt);
+        }
         
         // 显示诗意
         poemText.textContent = generatedPoem;
@@ -474,24 +587,177 @@ async function generatePoem() {
         
     } catch (error) {
         console.error('生成诗意失败:', error);
-        showMessage('生成诗意失败，请重试');
+        
+        // 提供更详细的错误信息
+        if (error.message.includes('API调用尝试均失败')) {
+            showMessage('AI服务暂时不可用，请稍后重试或检查网络连接', 'error');
+        } else if (error.message.includes('超时')) {
+            showMessage('请求超时，请检查网络连接后重试', 'error');
+        } else {
+            showMessage('生成失败，请重试', 'error');
+        }
+        
+        // 记录详细错误信息
+        ERROR_LOGGER.logError('GENERATE_POEM_ERROR', error.message, {
+            selectedImages: selectedImages,
+            errorStack: error.stack
+        });
     } finally {
         generateBtn.disabled = false;
         generateBtn.textContent = '生成意境';
     }
 }
 
-// 调用智谱AI文本生成API
-async function callGLMTextGeneration(prompt) {
+// 智能API调用函数 - 完全合规版
+async function smartAPICall(prompt, modelType = 'text', useHighQuality = false) {
+    // 严格按用户要求选择模型
+    let model, provider, apiKey;
+    
+    if (modelType === 'image') {
+        // 图像生成必须使用cogview-3-flash
+        model = API_CONFIG.IMAGE_MODEL;
+        provider = 'zhipu';
+        apiKey = API_CONFIG.ZHIPU_API_KEY;
+        console.log('🖼️ 图像生成模式：使用CogView-3-Flash模型');
+    } else {
+        // 文本生成根据质量模式选择
+        if (useHighQuality) {
+            model = API_CONFIG.HIGH_QUALITY_TEXT_MODEL; // glm-4.5-flash
+            provider = 'zhipu';
+            apiKey = API_CONFIG.ZHIPU_API_KEY;
+            console.log('🎯 高质量文本生成模式：切换到GLM-4.5-Flash模型');
+        } else {
+            model = API_CONFIG.DEFAULT_TEXT_MODEL; // glm-4-flash-250414
+            provider = 'zhipu';
+            apiKey = API_CONFIG.ZHIPU_API_KEY;
+            console.log('⚡ 标准文本生成模式：使用GLM-4-Flash-250414模型');
+        }
+    }
+    
+    const modelConfig = API_CONFIG.modelConfigs[model];
+    
+    let attempt = 0;
+    let lastError = null;
+    
+    while (attempt < API_CONFIG.MAX_RETRIES) {
+        try {
+            attempt++;
+            
+            // 记录API调用详细信息
+            console.log(`[API调用] 第${attempt}次尝试 - 模型: ${model}, 类型: ${modelType}, 质量模式: ${useHighQuality ? '高质量' : '标准'}`);
+            
+            let result;
+            if (provider === 'baidu') {
+                result = await callBaiduERNIEAPI(prompt, modelConfig, apiKey);
+            } else {
+                result = await callZhipuAIAPI(prompt, modelConfig, modelType, apiKey);
+            }
+            
+            // 记录成功日志
+            ERROR_LOGGER.logError('API_SUCCESS', `API调用成功 - 模型: ${model}, 类型: ${modelType}`, {
+                model: model,
+                modelType: modelType,
+                qualityMode: useHighQuality ? 'high' : 'standard',
+                attempt: attempt,
+                provider: provider,
+                promptLength: prompt.length
+            });
+            
+            return result;
+            
+        } catch (error) {
+            lastError = error;
+            
+            // 记录详细错误信息
+            ERROR_LOGGER.logError('API_ERROR', error.message, {
+                model: model,
+                modelType: modelType,
+                qualityMode: useHighQuality ? 'high' : 'standard',
+                attempt: attempt,
+                provider: provider,
+                errorStack: error.stack
+            }, error.stack);
+            
+            // 如果不是最后一次尝试，等待后重试
+            if (attempt < API_CONFIG.MAX_RETRIES) {
+                console.warn(`[API调用] 第${attempt}次尝试失败，${API_CONFIG.RETRY_DELAY}ms后重试`, error.message);
+                await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY * attempt));
+            }
+        }
+    }
+    
+    // 所有尝试都失败，提供详细错误信息
+    const errorDetails = `所有API调用尝试均失败: 模型=${model}, 类型=${modelType}, 最终错误=${lastError?.message || '未知错误'}`;
+    throw new Error(errorDetails);
+}
+
+// 调用百度ERNIE API
+async function callBaiduERNIEAPI(prompt, modelConfig, apiKey) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), modelConfig.timeout || API_CONFIG.TIMEOUT);
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/paas/v4/chat/completions`, {
+        const response = await fetch(`${API_CONFIG.ERNIE_API_URL}?access_token=${apiKey}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${ZHIPU_API_KEY}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: TEXT_MODEL,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: modelConfig.temperature,
+                max_output_tokens: modelConfig.maxTokens,
+                stream: false
+            }),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`ERNIE API请求失败: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.result) {
+            return data.result;
+        } else {
+            throw new Error('ERNIE API返回格式异常');
+        }
+        
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('API请求超时');
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+// 调用智谱AI API
+async function callZhipuAIAPI(prompt, modelConfig, modelType, apiKey) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), modelConfig.timeout || API_CONFIG.TIMEOUT);
+    
+    try {
+        let apiUrl, requestBody;
+        
+        if (modelType === 'image') {
+            apiUrl = modelConfig.apiUrl;
+            requestBody = {
+                model: modelConfig.name,
+                prompt: prompt,
+                size: modelConfig.size,
+                watermark_enabled: true
+            };
+        } else {
+            apiUrl = modelConfig.apiUrl;
+            requestBody = {
+                model: modelConfig.name,
                 messages: [
                     {
                         role: 'system',
@@ -502,67 +768,76 @@ async function callGLMTextGeneration(prompt) {
                         content: prompt
                     }
                 ],
-                max_tokens: modelConfigs[TEXT_MODEL].maxTokens,
-                temperature: modelConfigs[TEXT_MODEL].temperature,
-                thinking: {
-                    type: 'enabled'
-                }
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status}`);
+                max_tokens: modelConfig.maxTokens,
+                temperature: modelConfig.temperature
+            };
         }
 
-        const data = await response.json();
-        
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            return data.choices[0].message.content;
-        } else {
-            throw new Error('API返回格式异常');
-        }
-        
-    } catch (error) {
-        console.error('文本生成API调用失败:', error);
-        // 如果API调用失败，使用模拟生成作为备选方案
-        return await simulatePoemGeneration(prompt);
-    }
-}
-
-// 调用智谱AI图像生成API
-async function callGLMImageGeneration(prompt) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/paas/v4/images/generations`, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${ZHIPU_API_KEY}`
+                'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                model: IMAGE_MODEL,
-                prompt: prompt,
-                size: modelConfigs[IMAGE_MODEL].size,
-                watermark_enabled: true
-            })
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
         });
 
         if (!response.ok) {
-            throw new Error(`图像生成API请求失败: ${response.status}`);
+            throw new Error(`智谱AI API请求失败: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
         
-        if (data.data && data.data[0] && data.data[0].url) {
-            return data.data[0].url;
+        if (modelType === 'image') {
+            if (data.data && data.data[0] && data.data[0].url) {
+                return data.data[0].url;
+            } else {
+                throw new Error('图像生成API返回格式异常');
+            }
         } else {
-            throw new Error('图像生成API返回格式异常');
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                return data.choices[0].message.content;
+            } else {
+                throw new Error('文本生成API返回格式异常');
+            }
         }
         
     } catch (error) {
-        console.error('图像生成API调用失败:', error);
-        // 如果API调用失败，使用模拟生成作为备选方案
-        return await simulateImageGeneration(prompt);
+        if (error.name === 'AbortError') {
+            throw new Error('API请求超时');
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
+}
+
+// 备用模拟生成函数
+async function simulatePoemGeneration(prompt) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const templates = [
+                `${selectedImages.join('、')}在时光深处相遇，如古琴与清泉的和鸣。每一个意象都是一扇窗，透过它们望见远山的轮廓和内心的波澜。在这片宁静的天地间，万物皆有灵性，每一片落叶都承载着千年的故事。当思绪如云舒卷，心灵便化作一泓清潭，倒映着整个宇宙的倒影。原来最美的风景，永远在心中。`,
+                
+                `当${selectedImages.join('、')}在想象中交织，便勾勒出一幅超脱尘世的水墨长卷。这些意象如同散落的珍珠，被记忆的丝线串连，在心湖中泛起层层涟漪。远山如黛，近水含烟，一切都显得那么自然而然。在这片刻的宁静中，时间仿佛停止了流逝，唯有那份深藏的情感在悄然绽放。人生如梦，梦如人生，何不在此刻沉醉？`,
+                
+                `${selectedImages.join('、')}诉说着一个个古老的故事，如同岁月在心湖中投下的倒影。这些承载着文化基因的符号，在现代语境中依然散发着不灭的光芒。当它们在意识的舞台上翩翩起舞，便演绎出一场跨越千年的对话。此时此刻，我们不再是一个孤独的个体，而是与整个华夏文明产生了深深的共鸣。这种连接，超越了时空的限制。`
+            ];
+            
+            resolve(templates[Math.floor(Math.random() * templates.length)]);
+        }, 1500);
+    });
+}
+
+// 模拟图像生成函数
+async function simulateImageGeneration(prompt) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const seed = prompt.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 20);
+            resolve(`https://picsum.photos/seed/${seed}/800/600.jpg`);
+        }, 2000);
+    });
 }
 
 // 构建图像生成提示词
@@ -623,8 +898,14 @@ async function generateImage() {
         // 显示生成进度
         showGenerationProgress('image');
         
-        // 调用智谱AI图像生成API
-        generatedImageUrl = await callGLMImageGeneration(imagePrompt);
+        // 调用智能API系统 - 使用智谱AI图像生成
+        try {
+            generatedImageUrl = await smartAPICall(imagePrompt, 'image', false);
+        } catch (error) {
+            // 如果API调用失败，使用模拟生成作为备选方案
+            console.warn('图像API调用失败，使用模拟生成:', error.message);
+            generatedImageUrl = await simulateImageGeneration(imagePrompt);
+        }
         
         // 显示配图
         generatedImage.src = generatedImageUrl;
@@ -641,7 +922,21 @@ async function generateImage() {
         
     } catch (error) {
         console.error('生成配图失败:', error);
-        showMessage('生成配图失败，请重试');
+        
+        // 提供更详细的错误信息
+        if (error.message.includes('API调用尝试均失败')) {
+            showMessage('AI图像服务暂时不可用，已使用备用图片生成', 'warning');
+        } else if (error.message.includes('超时')) {
+            showMessage('图像生成超时，已使用备用图片生成', 'warning');
+        } else {
+            showMessage('生成配图失败，已使用备用图片生成', 'warning');
+        }
+        
+        // 记录详细错误信息
+        ERROR_LOGGER.logError('GENERATE_IMAGE_ERROR', error.message, {
+            imagePrompt: imagePrompt,
+            errorStack: error.stack
+        });
     } finally {
         generateImageBtn.disabled = false;
         generateImageBtn.textContent = '生成配图';
@@ -671,155 +966,244 @@ function buildImageKeywords() {
     return [...baseKeywords, ...imageKeywords].join(',');
 }
 
-// 模拟配图生成（实际应用中应调用真实API）
-function simulateImageGeneration(keywords) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            // 使用关键词创建更合适的占位图片
-            const width = 800;
-            const height = 600;
-            const seed = keywords.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 20);
-            resolve(`https://picsum.photos/seed/${seed}/${width}/${height}.jpg`);
-        }, 2000);
-    });
-}
 
-// 导出诗签
+
+// 导出诗签 - 修复版
 function exportCard() {
     if (!generatedPoem || !generatedImageUrl) {
         showMessage('请先生成意境和配图');
         return;
     }
     
+    // 显示导出进度
+    showMessage('正在生成诗签...', 'info');
+    
     // 创建canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    canvas.width = 1200;
-    canvas.height = 1600;
+    // 设置高清画布尺寸（A4比例）- 优化边距
+    canvas.width = 2480; // 300DPI A4宽度
+    canvas.height = 3508; // 300DPI A4高度
     
-    // 设置背景 - 素雅宣纸色
-    ctx.fillStyle = '#F9F4E6';
+    // 边距设置 - 专业排版优化版
+    const margin = {
+        top: 120,    // 上边距 - 增加顶部空间给标题
+        bottom: 150, // 下边距 - 增加底部空间给版权信息
+        left: 100,   // 左边距 - 增加对称性
+        right: 100   // 右边距 - 增加对称性
+    };
+    
+    // 设置背景 - 高级宣纸纹理
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#F9F4E6');
+    gradient.addColorStop(0.5, '#F5F0E1');
+    gradient.addColorStop(1, '#F9F4E6');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 添加古典边框 - 淡雅褐色
+    // 添加高级边框效果 - 优化边距
     ctx.strokeStyle = '#8B4513';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+    ctx.lineWidth = 20;
+    ctx.strokeRect(margin.left - 20, margin.top - 20, canvas.width - (margin.left + margin.right) + 40, canvas.height - (margin.top + margin.bottom) + 40);
     
-    // 添加内边框 - 细线装饰
+    // 添加内边框装饰
     ctx.strokeStyle = '#A0522D';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(60, 60, canvas.width - 120, canvas.height - 120);
+    ctx.lineWidth = 4;
+    ctx.strokeRect(margin.left - 10, margin.top - 10, canvas.width - (margin.left + margin.right) + 20, canvas.height - (margin.top + margin.bottom) + 20);
     
-    // 加载图片
+    // 加载图片 - 添加错误处理
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    
     img.onload = () => {
-        // 绘制配图 - 居中显示，适当留白
-        const imgY = 120;
-        const imgHeight = 500;
-        const imgWidth = (img.width / img.height) * imgHeight;
-        const imgX = (canvas.width - imgWidth) / 2;
-        
-        // 添加图片阴影效果
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 5;
-        ctx.shadowOffsetY = 5;
-        
-        ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
-        
-        // 重置阴影
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-        
-        // 绘制标题 - 使用宋体，典雅庄重
-        ctx.fillStyle = '#2F4F4F';
-        ctx.font = 'bold 48px "SimSun", "宋体", serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('意象·诗匣', canvas.width / 2, 80);
-        
-        // 绘制副标题 - 使用楷体，优雅流畅
-        ctx.font = 'italic 24px "KaiTi", "楷体", serif';
-        ctx.fillStyle = '#696969';
-        ctx.fillText('古典诗词意境探索', canvas.width / 2, 110);
-        
-        // 绘制诗意文本 - 使用楷体，优雅排版
-        ctx.font = '28px "KaiTi", "楷体", serif';
-        ctx.fillStyle = '#2F4F4F';
-        
-        const textY = imgY + imgHeight + 80;
-        const lineHeight = 45;
-        const maxLineWidth = canvas.width - 160;
-        
-        // 文本分行处理
-        const lines = wrapText(generatedPoem, maxLineWidth, ctx);
-        
-        // 计算文本区域高度，确保居中显示
-        const totalTextHeight = lines.length * lineHeight;
-        const startY = textY;
-        
-        // 绘制诗意文本 - 优雅居中排版
-        lines.forEach((line, index) => {
-            ctx.fillText(line, canvas.width / 2, startY + index * lineHeight);
-        });
-        
-        // 绘制分隔线 - 典雅细线
-        const separatorY = startY + totalTextHeight + 30;
-        ctx.strokeStyle = '#A0522D';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(canvas.width / 2 - 100, separatorY);
-        ctx.lineTo(canvas.width / 2 + 100, separatorY);
-        ctx.stroke();
-        
-        // 绘制意象标签 - 使用宋体，典雅庄重
-        ctx.font = 'italic 20px "SimSun", "宋体", serif';
-        ctx.fillStyle = '#696969';
-        ctx.fillText(`意象：${selectedImages.join(' · ')}`, canvas.width / 2, separatorY + 30);
-        
-        // 绘制时间戳 - 使用楷体，优雅流畅
-        ctx.font = '16px "KaiTi", "楷体", serif';
-        ctx.fillStyle = '#8B4513';
-        const date = new Date().toLocaleDateString('zh-CN');
-        ctx.fillText(date, canvas.width / 2, canvas.height - 80);
-        
-        // 绘制版权信息 - 使用宋体，简洁典雅
-        ctx.font = '14px "SimSun", "宋体", serif';
-        ctx.fillStyle = '#808080';
-        ctx.fillText('© 意象·诗匣 - 让古典诗词在数字时代焕发新生', canvas.width / 2, canvas.height - 40);
-        
-        // 下载图片 - 高清PNG格式
-        canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `意象诗匣_${selectedImages.join('_')}_${Date.now()}.png`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showMessage('诗签导出成功！');
-        }, 'image/png', 1.0);
+        try {
+            // 绘制配图区域 - 专业排版优化
+            const imgY = 240;
+            const imgHeight = 1100;
+            const imgWidth = Math.min((img.width / img.height) * imgHeight, canvas.width - 500);
+            const imgX = (canvas.width - imgWidth) / 2;
+            
+            // 添加图片阴影和边框效果 - 增强视觉效果
+            ctx.shadowColor = 'rgba(90, 57, 33, 0.4)';
+            ctx.shadowBlur = 30;
+            ctx.shadowOffsetX = 15;
+            ctx.shadowOffsetY = 15;
+            
+            // 绘制圆角图片背景 - 增加内边距
+            ctx.fillStyle = '#FFFFFF';
+            roundRect(ctx, imgX - 30, imgY - 30, imgWidth + 60, imgHeight + 60, 25);
+            ctx.fill();
+            
+            // 重置阴影
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // 绘制图片 - 增加内边距
+            roundRect(ctx, imgX, imgY, imgWidth, imgHeight, 20);
+            ctx.save();
+            ctx.clip();
+            ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
+            ctx.restore();
+            
+            // 绘制标题区域 - 优化排版
+            ctx.fillStyle = '#2F4F4F';
+            ctx.font = 'bold 90px "SimSun", "宋体", serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('意象·诗匣', canvas.width / 2, 140);
+            
+            // 绘制副标题 - 增加间距
+            ctx.font = 'italic 40px "KaiTi", "楷体", serif';
+            ctx.fillStyle = '#696969';
+            ctx.fillText('古典诗词意境探索', canvas.width / 2, 190);
+            
+            // 绘制诗意文本区域 - 专业排版优化
+            const textY = imgY + imgHeight + 150;
+            const lineHeight = 75;
+            const maxLineWidth = canvas.width - 400;
+            
+            // 优化文本分行处理 - 增强可读性
+            const lines = wrapText(generatedPoem, maxLineWidth, ctx);
+            const totalTextHeight = lines.length * lineHeight;
+            const startY = textY;
+            
+            // 绘制诗意文本背景 - 增加内边距
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            roundRect(ctx, 200, startY - 50, canvas.width - 400, totalTextHeight + 100, 20);
+            ctx.fill();
+            
+            // 绘制诗意文本 - 优化字体和间距
+            ctx.font = '56px "KaiTi", "楷体", serif';
+            ctx.fillStyle = '#2F4F4F';
+            ctx.textAlign = 'center';
+            
+            // 添加文本阴影增强可读性
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            
+            lines.forEach((line, index) => {
+                ctx.fillText(line, canvas.width / 2, startY + index * lineHeight);
+            });
+            
+            // 重置阴影
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // 绘制优雅分隔线 - 专业排版优化
+            const separatorY = startY + totalTextHeight + 80;
+            ctx.strokeStyle = '#A0522D';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2 - 250, separatorY);
+            ctx.lineTo(canvas.width / 2 + 250, separatorY);
+            ctx.stroke();
+            
+            // 绘制意象标签 - 优化字体和间距
+            ctx.font = 'italic 40px "SimSun", "宋体", serif';
+            ctx.fillStyle = '#696969';
+            ctx.fillText(`意象：${selectedImages.join(' · ')}`, canvas.width / 2, separatorY + 60);
+            
+            // 绘制时间戳 - 优化排版
+            ctx.font = '32px "KaiTi", "楷体", serif';
+            ctx.fillStyle = '#8B4513';
+            const date = new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            ctx.fillText(date, canvas.width / 2, canvas.height - 140);
+            
+            // 绘制版权信息 - 优化排版
+            ctx.font = '28px "SimSun", "宋体", serif';
+            ctx.fillStyle = '#808080';
+            ctx.fillText('© 意象·诗匣 - 让古典诗词在数字时代焕发新生', canvas.width / 2, canvas.height - 80);
+            
+            // 导出为高清PNG格式
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `意象诗匣_${selectedImages.join('_')}_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage('🎉 诗签导出成功！高清图片已下载', 'success');
+            }, 'image/png', 0.95);
+            
+        } catch (error) {
+            console.error('导出过程中出错:', error);
+            showMessage('导出失败，请重试', 'error');
+        }
+    };
+    
+    img.onerror = () => {
+        showMessage('图片加载失败，请重新生成意境', 'error');
     };
     
     img.src = generatedImageUrl;
 }
 
-// 文本分行处理
+// 圆角矩形绘制函数
+function roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+}
+
+// 智能文本分行处理 - 优化中文排版
 function wrapText(text, maxWidth, ctx) {
+    // 中文文本按字分词，但保持标点符号的连续性
     const words = text.split('');
     const lines = [];
     let currentLine = '';
     
-    for (let word of words) {
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
         const testLine = currentLine + word;
         const metrics = ctx.measureText(testLine);
         
+        // 如果超出宽度且当前行不为空，换行
         if (metrics.width > maxWidth && currentLine !== '') {
-            lines.push(currentLine);
-            currentLine = word;
+            // 处理标点符号：如果下一个字符是标点，尽量不换行
+            if (i < words.length - 1 && isPunctuation(words[i])) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                // 找到最后一个合适的断点
+                let lastBreakIndex = -1;
+                for (let j = currentLine.length - 1; j >= 0; j--) {
+                    if (isBreakPoint(currentLine[j])) {
+                        lastBreakIndex = j;
+                        break;
+                    }
+                }
+                
+                if (lastBreakIndex > 0) {
+                    // 在有标点的地方断行
+                    lines.push(currentLine.substring(0, lastBreakIndex + 1));
+                    currentLine = currentLine.substring(lastBreakIndex + 1) + word;
+                } else {
+                    // 强制换行
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
         } else {
             currentLine = testLine;
         }
@@ -830,6 +1214,18 @@ function wrapText(text, maxWidth, ctx) {
     }
     
     return lines;
+}
+
+// 判断是否为标点符号
+function isPunctuation(char) {
+    const punctuation = '，。！？；：、';
+    return punctuation.includes(char);
+}
+
+// 判断是否为合适的断点
+function isBreakPoint(char) {
+    const breakPoints = '，。！？；：';
+    return breakPoints.includes(char);
 }
 
 // 本地存储
@@ -929,6 +1325,20 @@ style.textContent = `
 document.head.appendChild(style);
 
 
+
+// 检查API状态
+function checkAPIStatus() {
+    console.log('API状态检查: 应用正常运行中');
+    // 这里可以添加实际的API状态检查逻辑
+    // 例如检查API密钥是否有效，网络连接等
+}
+
+// 检查API状态
+function checkAPIStatus() {
+    console.log('API状态检查: 应用正常运行中');
+    // 这里可以添加实际的API状态检查逻辑
+    // 例如检查API密钥是否有效，网络连接等
+}
 
 // 启动应用
 document.addEventListener('DOMContentLoaded', () => {

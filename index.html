@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>意象·诗匣 - 古典诗词意境探索</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <h1 class="title">意象·诗匣</h1>
+        <p class="subtitle">从唐诗宋词中拾取意象，让它们相撞，生成属于你的那一瞬诗意</p>
+    </header>
+
+    <main class="main">
+        <!-- 意象类别导航 -->
+        <nav class="category-nav">
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-tab active" data-category="natural">自然景物</button>
+                <button class="category-tab" data-category="architecture">建筑空间</button>
+                <button class="category-tab" data-category="objects">器物用具</button>
+                <button class="category-tab" data-category="time">时间节令</button>
+                <button class="category-tab" data-category="emotions">情感状态</button>
+                <button class="category-tab" data-category="actions">生命行为</button>
+            </div>
+        </nav>
+
+        <!-- 意象展示区 -->
+        <section class="images-section">
+            <div class="images-container">
+                <div class="images-scroll" id="imagesScroll">
+                    <!-- 意象按钮将通过JavaScript动态生成 -->
+                </div>
+            </div>
+            <div class="custom-image-input">
+                <input type="text" id="customImageInput" placeholder="自定义意象（不超过4字）" maxlength="4">
+                <button id="addCustomImage" class="add-custom-btn">添加</button>
+            </div>
+        </section>
+
+        <!-- 创作区 -->
+        <section class="creation-section">
+            <div class="creation-header">
+                <h3>创作区</h3>
+                <button id="clearAll" class="clear-btn">清空全部</button>
+            </div>
+            <div class="creation-area" id="creationArea">
+                <div class="creation-placeholder">请从上方选择2-7个意象开始创作</div>
+            </div>
+            <button id="generatePoem" class="generate-btn" disabled>生成意境</button>
+        </section>
+
+        <!-- 诗意展示区 -->
+        <section class="poem-section" id="poemSection" style="display: none;">
+            <div class="poem-content">
+                <div class="poem-text" id="poemText"></div>
+                <div class="poem-quote" id="poemQuote"></div>
+            </div>
+            <button id="generateImage" class="generate-image-btn">生成配图</button>
+        </section>
+
+        <!-- 配图展示区 -->
+        <section class="image-section" id="imageSection" style="display: none;">
+            <div class="generated-image-container">
+                <img id="generatedImage" alt="意境配图" class="generated-image">
+            </div>
+            <button id="exportCard" class="export-btn">导出诗签</button>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 意象·诗匣 - 让古典诗词在数字时代焕发新生</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

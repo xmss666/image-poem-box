@@ -1,0 +1,23 @@
+{
+  "name": "image-poem-box",
+  "version": "1.0.0",
+  "description": "意象·诗匣 - 古典诗词意境探索Web应用",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "live-server --port=8000",
+    "build": "echo '构建完成，可直接部署静态文件'",
+    "deploy": "echo '部署到静态文件服务器'"
+  },
+  "keywords": ["诗词", "意境", "古典文学", "AI生成", "前端"],
+  "author": "意象·诗匣团队",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/image-poem-box.git"
+  },
+  "homepage": "https://your-username.github.io/image-poem-box"
+}
